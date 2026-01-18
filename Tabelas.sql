@@ -1,8 +1,6 @@
-/*
-CREATE DATABASE SpotPer
-*/
+USE SpotPer 
+GO
 
-USE SpotPer
 
 Create table periodo(
 	cod_per tinyint not null,
@@ -13,14 +11,14 @@ Create table periodo(
 	constraint Pk_cod_per primary key(cod_per),
 
 	constraint Check_anos CHECK(ano_inicio<ano_fim)
-);
+)on FG_DADOS
 
 CREATE TABLE tipo_comp(
 	cod_tipo tinyint not null,
 	descricao varchar(20)not null,
 
 	constraint  Fk_tipo_comp primary key(cod_tipo)
-);
+)on FG_DADOS
 
 Create table gravadora(
 	cod_gra smallint not null,
@@ -33,7 +31,7 @@ Create table gravadora(
 
 	constraint Pk_cod_gra PRIMARY KEY(cod_gra)
 
-);
+)on FG_DADOS
 
 Create table telefones_gravadora(
 	telefone varchar(15) not null,
@@ -42,7 +40,7 @@ Create table telefones_gravadora(
 	constraint Pk_tel_gravadora primary key(cod_gra, telefone),
 
 	constraint Fk_telefone foreign key(cod_gra) references gravadora(cod_gra)
-);
+)on FG_DADOS
 
 Create table interprete(
 	cod_int smallint not null,
@@ -51,7 +49,7 @@ Create table interprete(
 
 	constraint Pk_cod_inter PRIMARY KEY(cod_int)
 
-);
+)on FG_DADOS
 
 Create table compositor(
 	cod_comp smallint not null,
@@ -67,7 +65,7 @@ Create table compositor(
 
 	constraint Check_datas CHECK(dt_morte is null or dt_nasc<dt_morte)
 
-);
+)on FG_DADOS
 
 Create table album(
 	cod_album SMALLINT not null,
@@ -83,27 +81,28 @@ Create table album(
 
 	constraint Check_data CHECK(dt_gravacao >= '2000-01-01'),
 	constraint Check_meio_fisico CHECK(meio_fisico in ('CD','VINIL', 'DOWNLOAD'))
-);
+)on FG_DADOS
 
 
 CREATE TABLE faixa(
 	cod_album SMALLINT not null,
-	numero SMALLINT not null,
+	num_disco TINYINT not null,
+	num_faixa SMALLINT not null,
 	descricao VARCHAR(50) not null,
 	tempo SMALLINT not null,
-	tipo_gravacao VARCHAR(3) not null,
+	tipo_gravacao VARCHAR(3),
 	tipo_composicao TINYINT not null,
 
-	CONSTRAINT Pk_faixa PRIMARY KEY(cod_album, numero),
+	CONSTRAINT Pk_faixa PRIMARY KEY(cod_album, num_disco, num_faixa),
 
 	CONSTRAINT Fk_faixa_tipo_comp foreign key(tipo_composicao) references tipo_comp(cod_tipo),
-
-	CONSTRAINT Check_tipo_grav CHECK(tipo_gravacao in ('ADD', 'DDD')),
+	
+	CONSTRAINT Check_tipo_grav CHECK( tipo_gravacao in ('ADD', 'DDD')),
 
 	CONSTRAINT FK_faixa_album FOREIGN KEY (cod_album) references album(cod_album) ON DELETE CASCADE
 
 
-);
+)on FG_DADOS
 
 Create table playlist(
 
@@ -112,50 +111,53 @@ Create table playlist(
 	dt_criacao date not null,
 	tempo smallint,
 
-	constraint Fk_playlist primary key(cod_play),
+	constraint Pk_playlist primary key(cod_play),
 
 	constraint Check_tempo CHECK(tempo>0)
 
-);
+)on FG_PLAYLIST
 
 --Tabelas N:N
 
-Create table faixa_playlist(
+Create table playlists(
 	num_faixa smallint NOT NULL,
     cod_album SMALLINT NOT NULL,
+	num_disco tinyint not null,
     cod_play SMALLINT NOT NULL,
     vezes_tocada SMALLINT,
     ultima_vez_tocada DATE,
 
-	constraint Pk_play_mus primary key(cod_album, num_faixa, cod_play),
+	constraint Pk_play_mus primary key(cod_album, num_faixa, num_disco, cod_play),
 
-	constraint Fk_faixa_play_faixa foreign key (cod_album, num_faixa) REFERENCES faixa(cod_album, numero),
+	constraint Fk_faixa_play_faixa foreign key (cod_album, num_disco, num_faixa) REFERENCES faixa(cod_album, num_disco, num_faixa) ON DELETE CASCADE,
 
 	constraint Fk_faixa_play_play foreign key (cod_play) references playlist(cod_play)
-);
+)on FG_PLAYLIST
 
 CREATE TABLE compositores(
 
 	num_faixa smallint not null,
 	cod_album smallint not null,
+	num_disco tinyint not null,
 	cod_comp smallint not null,
 
-	constraint Pk_compositores primary key(cod_album, num_faixa, cod_comp),
+	constraint Pk_compositores primary key(cod_album, num_faixa, num_disco, cod_comp),
 
-	constraint Fk_compositores_faixa foreign key(cod_album, num_faixa) references faixa(cod_album, numero),
+	constraint Fk_compositores_faixa foreign key(cod_album, num_disco, num_faixa ) references faixa(cod_album, num_disco, num_faixa ) ON DELETE  CASCADE,
 
 	constraint Fk_compositores_compositor foreign key(cod_comp) references compositor(cod_comp)
-);
+)on FG_DADOS
 
 CREATE TABLE interpretes(
 	
 	num_faixa smallint not null,
 	cod_album smallint not null,
+	num_disco tinyint not null,
 	cod_inter smallint not null,
 
-	constraint Pk_interpretes PRIMARY KEY(cod_album, num_faixa, cod_inter),
+	constraint Pk_interpretes PRIMARY KEY(cod_album, num_faixa, num_disco, cod_inter),
 
-	constraint Fk_interpretes_faixa foreign key(cod_album, num_faixa) references faixa(cod_album, numero),
+	constraint Fk_interpretes_faixa foreign key(cod_album, num_disco, num_faixa) references faixa(cod_album, num_disco, num_faixa) ON DELETE CASCADE,
 
 	constraint Fk_interpretes_interprete foreign key(cod_inter) references interprete(cod_int)
-);
+)on FG_DADOS
