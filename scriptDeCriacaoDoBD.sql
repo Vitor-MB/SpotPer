@@ -1,6 +1,48 @@
-USE SpotPer 
+--SCRIPT DE CRIACAO DO BANCO DE DADOS
+
+CREATE DATABASE SpotPer
+
+ON PRIMARY(
+	NAME = SpotPer_Primary,
+	FILENAME = 'C:\SpotPer\SpotPer_Primary.mdf',
+	SIZE = 30 MB,
+	FILEGROWTH = 10 MB
+),
+
+FILEGROUP FG_DADOS(
+	NAME = SpotPer_Dados1,
+	FILENAME = 'C:\SpotPer\SpotPer_Dados1.ndf',
+	SIZE = 20MB,
+	FILEGROWTH = 10MB
+),
+(
+	NAME = SpotPer_Dados2,
+	FILENAME = 'C:\SpotPer\SpotPer_Dados2.ndf',
+	SIZE = 20MB,
+	FILEGROWTH = 10MB
+),
+
+FILEGROUP FG_PLAYLIST(
+	NAME = SpotPer_Playlists,
+	FILENAME = 'C:\SpotPer\SpotPer_Playlists.ndf',
+	SIZE = 30MB,
+	FILEGROWTH = 10MB
+)
+
+LOG ON (
+	NAME = SpotPer_Log,
+	FILENAME = 'C:\SpotPer\SpotPer_Log.ldf',
+	SIZE = 15MB,
+	FILEGROWTH = 15MB
+)
+
 GO
 
+USE SpotPer
+
+GO
+
+--CRIACAO DAS TABELAS
 
 Create table periodo(
 	cod_per tinyint not null,
@@ -131,7 +173,7 @@ Create table playlists(
 
 	constraint Fk_faixa_play_faixa foreign key (cod_album, num_disco, num_faixa) REFERENCES faixa(cod_album, num_disco, num_faixa) ON DELETE CASCADE,
 
-	constraint Fk_faixa_play_play foreign key (cod_play) references playlist(cod_play)
+	constraint Fk_faixa_play_play foreign key (cod_play) references playlist(cod_play) ON DELETE CASCADE
 )on FG_PLAYLIST
 
 CREATE TABLE compositores(
@@ -161,3 +203,125 @@ CREATE TABLE interpretes(
 
 	constraint Fk_interpretes_interprete foreign key(cod_inter) references interprete(cod_int)
 )on FG_DADOS
+
+GO
+
+--CRIACAO DOS TRIGGERS
+
+--´CD TEM QUE SER ADD OU DDD E OS OUUTROS NUULOS
+CREATE TRIGGER tipo_gravacao
+on faixa
+for INSERT, UPDATE
+as
+Begin
+	if exists(
+		select *
+		from album a join inserted f on a.cod_album = f.cod_album
+		where (meio_fisico = 'CD' and tipo_gravacao is null) or (meio_fisico in ('VINIL', 'DOWNLOAD') and tipo_gravacao is not null))
+		Begin
+			raiserror('Tipo de gravação incompátivel com o meio fisico', 16, 1);
+			rollback transaction;
+	END
+END;
+GO
+
+
+--MAXIMO DE MUSICAS É 64 POR ALBUM
+CREATE TRIGGER maximo_musicas
+on faixa
+for insert
+as
+begin
+	 IF EXISTS (
+        SELECT *
+        FROM ( 
+			SELECT count(*) as QTD
+            FROM Faixa
+            WHERE cod_album IN (SELECT DISTINCT cod_album FROM inserted)
+            GROUP BY cod_album
+			) t
+		WHERE t.QTD > 64
+      
+    )
+		begin
+			raiserror( 'A quantidade maxima de faixas para esse album atingida(64 faixas)', 16, 1);
+			rollback transaction;
+		end
+end;
+GO
+
+
+--Barroco so DDD
+CREATE TRIGGER Barroco_DDD
+on compositores
+for update, insert
+as
+BEGIN
+	IF exists(
+		select *
+		from inserted i join faixa f on i.num_faixa = f.num_faixa and i.cod_album = f.cod_album and f.num_disco = i.num_disco join compositor c on i.cod_comp = c.cod_comp join periodo p on p.cod_per = c.periodo
+		where p.descricao like '_arroco' and f.tipo_gravacao <> 'DDD'
+		)
+		BEGIN
+			raiserror('Faixas do periodo Barroco devem ter o tipo de gravacao DDD', 16, 1);
+			rollback transaction;
+	END
+END;
+GO
+
+
+CREATE TRIGGER limite_preco
+ON album
+for insert, update
+as
+BEGIN
+	if exists(
+		select *
+		from inserted i
+		where i.preco >  3 * 
+			( 
+			--Nenhuma faixa tem a gravacao DDD
+				select avg(a.preco)
+				from album a
+				where not exists(
+					select *
+					from faixa f
+					where f.cod_album = a.cod_album and f.tipo_gravacao <> 'DDD'
+					)
+			)
+			and
+			(
+				select count(*)
+				from album a
+				where not exists (
+					select *
+					from faixa f
+					where f.cod_album = a.cod_album and f.tipo_gravacao > 'DDD'
+					)
+			) > 0
+			
+			)
+
+			begin
+			raiserror('O preco inserido deve ser até 3 vezes menor que a media de toddos os albuns DDD', 16, 1);
+			rollback transaction;
+			end
+	end;
+
+
+GO
+
+--CRIACAO DA FUNCAO
+
+create function Albuns_do_Compositor (@nome_compositor_ent varchar(50))
+returns  @tab_resultado table (descricao_album varchar(30), cod_album smallint)
+as
+begin
+declare @nome_compositor varchar(50)
+set @nome_compositor = '%'+@nome_compositor_ent+'%'
+insert into @tab_resultado
+select a.decricao, a.cod_album
+from album a join faixa f on a.cod_album = f.cod_album join compositores co on f.cod_album = co.cod_album and f.num_faixa = co.num_faixa and co.num_disco = f.num_disco join compositor c on co.cod_comp = c.cod_comp
+where c.nome like @nome_compositor
+return
+end
