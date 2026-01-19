@@ -72,13 +72,15 @@ where descricao = 'Teste'
 */
 
 --Periodo barroco DDD
+
+INSERT INTO faixa VALUES
+(2, 1, 3,  'Teste', 200, 'ADD', 1)
 Insert into compositores values
--- (num_faixa, cod_album, num_disco, cod_comp)
-(3, 1, 1, 1)
+(3, 2, 1, 1)
 
 --Album até 3x o valor da media dos albuns DDD
 Insert into album values
-(8, 'Album_teste',10000.00, '2025-12-05', '2025-08-13', 'CD', 1)
+(8, 'Album_teste',150000, '2025-12-05', '2025-08-13', 'CD', 1)
 
 /*
 delete from album

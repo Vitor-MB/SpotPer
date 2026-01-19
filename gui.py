@@ -110,7 +110,7 @@ def abrir_janela_criar_playlist():
 
         data = date.today()
 
-        com_sql.criarPlaylist(cod_play, nome, data, 0)
+        com_sql.criarPlaylist(cod_play, nome, data, 200)
 
         selecionadas = listbox.curselection()
         for i in selecionadas:
@@ -135,19 +135,23 @@ def abrir_janela_editar_playlist():
     janela.geometry("900x600")
     janela.resizable(False, False)
 
+    playlist_selecionada = {"cod": None}
+
     frame_playlists = ctk.CTkFrame(janela)
     frame_playlists.pack(side="left", fill="y", padx=10, pady=10)
 
     frame_musicas = ctk.CTkFrame(janela)
     frame_musicas.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
+    # ================= PLAYLISTS =================
     ctk.CTkLabel(frame_playlists, text="Playlists").pack(pady=5)
 
     listbox_playlists = tk.Listbox(
         frame_playlists,
         height=25,
         bg="#1e1e1e",
-        fg="white"
+        fg="white",
+        exportselection=False
     )
     listbox_playlists.pack(padx=10, pady=10)
 
@@ -155,79 +159,123 @@ def abrir_janela_editar_playlist():
     for p in playlists:
         listbox_playlists.insert(tk.END, f"{p[0]} - {p[1]}")
 
-    ctk.CTkLabel(frame_musicas, text="Músicas da Playlist").pack(pady=5)
+    # ================= MUSICAS DA PLAYLIST =================
+    ctk.CTkLabel(frame_musicas, text="Músicas da Playlist").pack()
 
-    listbox_musicas_playlist = tk.Listbox(
+    listbox_playlist = tk.Listbox(
         frame_musicas,
-        selectmode=tk.MULTIPLE,
         bg="#1e1e1e",
-        fg="white"
+        fg="white",
+        height=10,
+        exportselection=False
     )
-    listbox_musicas_playlist.pack(fill="both", expand=True, padx=10, pady=5)
+    listbox_playlist.pack(fill="x", padx=10)
 
-    ctk.CTkLabel(frame_musicas, text="Todas as Músicas").pack(pady=5)
-
-    listbox_todas_musicas = tk.Listbox(
+    btn_remover = ctk.CTkButton(
         frame_musicas,
-        selectmode=tk.MULTIPLE,
-        bg="#1e1e1e",
-        fg="white"
+        text="Remover música da playlist",
+        state="disabled"
     )
-    listbox_todas_musicas.pack(fill="both", expand=True, padx=10, pady=5)
+    btn_remover.pack(pady=5)
+
+    # ================= TODAS MUSICAS =================
+    ctk.CTkLabel(frame_musicas, text="Todas as músicas").pack(pady=5)
+
+    listbox_todas = tk.Listbox(
+        frame_musicas,
+        bg="#1e1e1e",
+        fg="white",
+        height=10,
+        exportselection=False
+    )
+    listbox_todas.pack(fill="x", padx=10)
+
+    btn_adicionar = ctk.CTkButton(
+        frame_musicas,
+        text="Adicionar música à playlist",
+        state="disabled"
+    )
+    btn_adicionar.pack(pady=5)
 
     todas_musicas = com_sql.listarTodasMusicas()
     for m in todas_musicas:
-        listbox_todas_musicas.insert(
+        listbox_todas.insert(
             tk.END,
             f"Álbum {m[0]} | Disco {m[1]} | Faixa {m[2]} - {m[3]}"
         )
 
+    # ================= FUNÇÕES =================
     def carregar_musicas_playlist(event):
-        listbox_musicas_playlist.delete(0, tk.END)
+        listbox_playlist.delete(0, tk.END)
+        btn_remover.configure(state="disabled")
+        btn_adicionar.configure(state="disabled")
 
-        selecionado = listbox_playlists.curselection()
-        if not selecionado:
+        sel = listbox_playlists.curselection()
+        if not sel:
             return
 
-        texto = listbox_playlists.get(selecionado)
-        cod_play = int(texto.split(" - ")[0])
+        cod = int(listbox_playlists.get(sel).split(" - ")[0])
+        playlist_selecionada["cod"] = cod
 
-        musicas = com_sql.listarMusicasDaPlaylist(cod_play)
+        musicas = com_sql.listarMusicasDaPlaylist(cod)
         for m in musicas:
-            listbox_musicas_playlist.insert(
+            listbox_playlist.insert(
                 tk.END,
                 f"Álbum {m[0]} | Disco {m[1]} | Faixa {m[2]} - {m[3]}"
             )
 
-    listbox_playlists.bind("<<ListboxSelect>>", carregar_musicas_playlist)
+    def selecionar_musica_playlist(event):
+        if playlist_selecionada["cod"] is not None:
+            btn_remover.configure(state="normal")
 
-    def salvar_edicao():
-        selecionado = listbox_playlists.curselection()
-        if not selecionado:
+    def selecionar_musica_todas(event):
+        if playlist_selecionada["cod"] is not None:
+            btn_adicionar.configure(state="normal")
+
+    def remover_musica():
+        i = listbox_playlist.curselection()
+        if not i:
             return
 
-        texto = listbox_playlists.get(selecionado)
-        cod_play = int(texto.split(" - ")[0])
+        cod_play = playlist_selecionada["cod"]
+        musica = com_sql.listarMusicasDaPlaylist(cod_play)[i[0]]
 
-        # Remover músicas selecionadas
-        for i in listbox_musicas_playlist.curselection():
-            cod_album, num_disco, num_faixa, _ = com_sql.listarMusicasDaPlaylist(cod_play)[i]
-            com_sql.removerFaixaDaPlaylist(num_faixa, cod_album, num_disco, cod_play)
+        com_sql.removerFaixaDaPlaylist(
+            musica[2], musica[0], musica[1], cod_play
+        )
 
-        # Adicionar músicas novas
-        for i in listbox_todas_musicas.curselection():
-            cod_album, num_disco, num_faixa, _ = todas_musicas[i]
-            com_sql.adicionarFaixasPlaylist(num_faixa, cod_album, num_disco, cod_play)
+        carregar_musicas_playlist(None)
 
-        messagebox.showinfo("Sucesso", "Playlist atualizada com sucesso")
-        carregar_playlists()
-        janela.destroy()
+    def adicionar_musica():
+        i = listbox_todas.curselection()
+        if not i:
+            return
 
-    ctk.CTkButton(
-        janela,
-        text="Salvar Alterações",
-        command=salvar_edicao
-    ).pack(pady=10)
+        cod_play = playlist_selecionada["cod"]
+        musica = todas_musicas[i[0]]
+
+        # REGRA: não duplicar
+        existentes = com_sql.listarMusicasDaPlaylist(cod_play)
+        if any(
+            m[0] == musica[0] and m[1] == musica[1] and m[2] == musica[2]
+            for m in existentes
+        ):
+            messagebox.showwarning("Aviso", "Essa música já está na playlist")
+            return
+
+        com_sql.adicionarFaixasPlaylist(
+            musica[2], musica[0], musica[1], cod_play
+        )
+
+        carregar_musicas_playlist(None)
+
+    # ================= BINDS =================
+    listbox_playlists.bind("<<ListboxSelect>>", carregar_musicas_playlist)
+    listbox_playlist.bind("<<ListboxSelect>>", selecionar_musica_playlist)
+    listbox_todas.bind("<<ListboxSelect>>", selecionar_musica_todas)
+
+    btn_remover.configure(command=remover_musica)
+    btn_adicionar.configure(command=adicionar_musica)
 
 def iniciar_app():
     global entry_cod, lista_playlists
@@ -237,14 +285,14 @@ def iniciar_app():
     app.geometry("900x600")
     app.resizable(False, False)
 
-    imagem_fundo = ctk.CTkImage(
-        light_image=Image.open("fundo.jpg"),
-        dark_image=Image.open("fundo.jpg"),
-        size=(900, 600)
+    imagem_logo = ctk.CTkImage(
+        light_image=Image.open("logo-sFundo.png"),
+        dark_image=Image.open("logo-sFundo.png"),
+        size=(150, 150)
     )
 
-    fundo = ctk.CTkLabel(app, image=imagem_fundo, text="")
-    fundo.place(x=0, y=0)
+    fundo = ctk.CTkLabel(app, image=imagem_logo, text="")
+    fundo.place(x=-10, y=-10)
     fundo.lower()
 
     ctk.CTkLabel(app, text="SpotPer", font=("Arial", 28, "bold")).pack(pady=20)
