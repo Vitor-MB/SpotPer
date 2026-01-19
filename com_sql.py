@@ -75,3 +75,41 @@ def gerarNovoCodigoPlaylist():
 
     quantidade = resultado[0][0] + 1
     return f"{quantidade:04d}"
+
+def listarMusicasDaPlaylist(cod_play):
+    return fazerConsulta(
+        """
+        SELECT f.cod_album, f.num_disco, f.num_faixa, f.descricao
+        FROM playlists p
+        JOIN faixa f
+            ON p.cod_album = f.cod_album
+           AND p.num_disco = f.num_disco
+           AND p.num_faixa = f.num_faixa
+        WHERE p.cod_play = ?
+        ORDER BY f.cod_album, f.num_disco, f.num_faixa
+        """,
+        (cod_play,)
+    )
+
+
+def removerFaixaDaPlaylist(num_faixa, cod_album, num_disco, cod_play):
+    return executarAcao(
+        """
+        DELETE FROM playlists
+        WHERE num_faixa = ?
+          AND cod_album = ?
+          AND num_disco = ?
+          AND cod_play = ?
+        """,
+        (num_faixa, cod_album, num_disco, cod_play)
+    )
+
+
+def listarTodasMusicas():
+    return fazerConsulta(
+        """
+        SELECT cod_album, num_disco, num_faixa, descricao
+        FROM faixa
+        ORDER BY cod_album, num_disco, num_faixa
+        """
+    )
