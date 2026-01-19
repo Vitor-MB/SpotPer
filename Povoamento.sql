@@ -34,9 +34,9 @@ insert into compositor values
 
 insert into tipo_comp values
 --(cod_tipo, descricao)
-(2, 'Clássica'),
-(3, 'MPB'),
-(1, 'Barroca');
+(1, 'Canção'),
+(2, 'Concerto'),
+(3, 'Sinfonia');
 
 
 insert into interprete values
@@ -55,6 +55,9 @@ insert into faixa values
 (1, 2, 1, 'Vento do Norte',   200, 'DDD', 2),
 (1, 2, 2, 'Vento do Norte',   200, 'DDD', 2),
 
+(1, 2, 3, 'Teste Barroco Concerto',   200, 'DDD', 2),
+
+
 (2, 1, 1, 'Sonata ao luar', 305, null, 2),
 (2, 1, 2, '9° sinfonia',   930, null, 2),
 
@@ -72,6 +75,8 @@ insert into interpretes values
 (1, 1, 2, 4),
 (1, 1, 1, 7),
 
+(3, 1, 2, 2),
+
 (1, 3, 1, 3),
 (2, 3, 1, 2),
 (1, 3, 2, 1),
@@ -81,6 +86,8 @@ insert into compositores values
 -- (num_faixa, cod_album, num_disco, cod_comp)
 (1, 2, 1, 6),
 (2, 2, 1, 6),
+
+(3, 1, 2, 1),
 
 (1, 1, 1, 1),
 (1, 1, 2, 6),
@@ -96,7 +103,8 @@ insert into playlist values
 -- (cod_play, nome, dt_criacao, tempo)
 (1, 'Favoritas', '2025-01-10', 1500),
 (2, 'Classicos Ouro', '2026-01-10', 1230),
-(3, 'MPB Relax', '2025-12-05', 1600);
+(3, 'MPB Relax', '2025-12-05', 1600),
+(4, 'Concertos Barrocos', '2025-12-05', 100);
 
 
 
@@ -116,4 +124,7 @@ insert into playlists values
 -- Playlist 3 – MPB Relax
 (1, 3, 1, 3, 15, '2025-12-30'),
 (2, 3, 2, 3, 12, '2025-12-30'),
-(2, 3, 1, 3, 10, '2025-12-30');
+(2, 3, 1, 3, 10, '2025-12-30'),
+
+-- Playlist 4 - Concertos Barrocos
+(3, 1, 2, 4, 13, null);
