@@ -4,7 +4,7 @@ import pyodbc
 def conectarBD():
     return pyodbc.connect(
         "DRIVER={ODBC Driver 18 for SQL Server};"
-        "SERVER=DESKTOP-VVHFIP4;"
+        "SERVER=localhost;"
         "DATABASE=SpotPer;"
         "TrustServerCertificate=yes;"
         "Trusted_Connection=yes;"
@@ -49,10 +49,10 @@ def adicionarFaixasPlaylist(num_faixa, cod_album, num_disco, cod_play):
     )
 
 
-def criarPlaylist(codPlay, nome, dt_criacao, tempo):
+def criarPlaylist(codPlay, nome, dt_criacao):
     return executarAcao(
-        "INSERT INTO PLAYLIST (cod_play, nome, dt_criacao, tempo) VALUES (?,?,?,?)",
-        (codPlay, nome, dt_criacao, tempo)
+        "INSERT INTO PLAYLIST (cod_play, nome, dt_criacao) VALUES (?,?,?)",
+        (codPlay, nome, dt_criacao)
     )
 
 
@@ -64,7 +64,11 @@ def deletaPlaylist(cod_play):
 
 
 def listarPlaylist():
-    return fazerConsulta("SELECT * FROM Playlist")
+    return fazerConsulta("""
+                         select p.cod_play, pl.nome , pl.dt_criacao, sum(f.tempo) as 'Tempo_playlist'
+                        from faixa f join playlists p on f.cod_album = p.cod_album AND f.num_disco = p.num_disco AND f.num_faixa = p.num_faixa join playlist pl on p.cod_play = pl.cod_play 
+                        group by p.cod_play, pl.nome, pl.dt_criacao
+                         """)
 
 def gerarNovoCodigoPlaylist():
     resultado = fazerConsulta("SELECT COUNT(*) FROM playlist")

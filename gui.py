@@ -3,10 +3,16 @@ from datetime import date
 from PIL import Image
 import com_sql
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox as mb
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
+
+def centralizar_janela(janela, largura, altura):
+    janela.update_idletasks()
+    x = (janela.winfo_screenwidth() // 2) - (largura // 2)
+    y = (janela.winfo_screenheight() // 2) - (altura // 2)
+    janela.geometry(f"{largura}x{altura}+{x}+{y}")
 
 
 def carregar_playlists():
@@ -30,17 +36,245 @@ def deletar_playlist():
     try:
         cod = int(entry_cod.get())
         if com_sql.deletaPlaylist(cod):
+            mb.showinfo("Deletado", "Playlist deletada com sucesso")
             carregar_playlists()
         else:
-            messagebox.showerror("Erro", "Erro ao deletar playlist")
+            mb.showerror("Erro", "Erro ao deletar playlist")
     except ValueError:
-        messagebox.showwarning("Aviso", "Código inválido")
+        mb.showwarning("Aviso", "Código inválido")
 
 
-def abrir_janela_criar_playlist():
+def abrir_janela_consultas(app):
     janela = ctk.CTkToplevel()
+    janela.transient(app)
+    janela.grab_set()
+    janela.focus_force()
+    janela.title("Consulta")
+    largura, altura = 1000, 600
+    centralizar_janela(janela, largura, altura)
+    janela.resizable(False, False)
+
+    # ===========================
+    # Consultas
+    # ===========================
+
+    def realizarconsulta1(consulta, listbox):
+        listbox.delete(0, tk.END)
+        resultado = com_sql.fazerConsulta(consulta)
+
+        if not resultado:
+            listbox.insert(tk.END, "⚠️ Banco indisponível ou sem músicas cadastradas")
+        for m in resultado:
+            texto = f"Álbum {m[0]}"
+            listbox.insert(tk.END, texto)
+
+    def realizarconsulta2(consulta, listbox):
+        listbox.delete(0, tk.END)
+        resultado = com_sql.fazerConsulta(consulta)
+
+        if not resultado:
+            listbox.insert(tk.END, "⚠️ Banco indisponível ou sem músicas cadastradas")
+        for m in resultado:
+            texto = f"Código da gravadora = {m[0]} | nome da gravadora = {m[1]} | qtd = {m[2]}"
+            listbox.insert(tk.END, texto)
+
+    def realizarconsulta3(consulta, listbox):
+        listbox.delete(0, tk.END)
+        resultado = com_sql.fazerConsulta(consulta)
+
+        if not resultado:
+            listbox.insert(tk.END, "⚠️ Banco indisponível ou sem músicas cadastradas")
+        for m in resultado:
+            texto = f"Nome do Compositor = {m[0]} | total_faixas = {m[1]}"
+            listbox.insert(tk.END, texto)
+    
+    def realizarconsulta3(consulta, listbox):
+        listbox.delete(0, tk.END)
+        resultado = com_sql.fazerConsulta(consulta)
+
+        if not resultado:
+            listbox.insert(tk.END, "⚠️ Banco indisponível ou sem músicas cadastradas")
+        for m in resultado:
+            texto = f"Nome da Playlist = {m[0]}"
+            listbox.insert(tk.END, texto)
+
+
+
+    frame_dados1 = ctk.CTkFrame(janela)
+    frame_dados1.columnconfigure(1, weight=1)
+    frame_dados1.pack(pady=10, fill="x", padx=20)
+    ctk.CTkLabel(frame_dados1, text="Albuns com valor maior que a média de todos os albuns").grid(row=0, column=0, padx=10, pady=5)
+
+    listbox1 = tk.Listbox(
+        frame_dados1,
+        selectmode=tk.MULTIPLE,
+        height=4,
+        bg="#1e1e1e",
+        fg="white"
+    )
+
+    listbox1.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+    resultado1 = """
+        SELECT a.decricao
+        from(
+            SELECT avg(a1.preco) as Media
+            from album a1
+            ) m, album a
+        WHERE a.preco > m.Media
+    """
+
+    btn_realizarconsulta1 = ctk.CTkButton(
+        frame_dados1,
+        text="Realizar consulta",
+        command=lambda: realizarconsulta1(resultado1, listbox1)
+    )
+    btn_realizarconsulta1.grid(row=1, column=3, padx=10, pady=10, sticky="nsew")
+
+
+    ################################
+
+    frame_dados2 = ctk.CTkFrame(janela)
+    frame_dados2.pack(pady=10, fill="x", padx=20)
+    frame_dados2.columnconfigure(1, weight=1)
+    ctk.CTkLabel(frame_dados2, text="Nome da gravadora com maior número de playlists que possuem pelo uma faixa composta pelo compositor Dvorack.").grid(row=0, column=0, padx=10, pady=5)
+
+    listbox2 = tk.Listbox(
+        frame_dados2,
+        selectmode=tk.MULTIPLE,
+        height=4,
+        bg="#1e1e1e",
+        fg="white"
+    )
+
+    listbox2.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+    resultado2 = """
+    SELECT q.cod_gra, g.nome, q.Qtd_faixas_na_playlist
+    FROM (
+        SELECT g.cod_gra, count(*) as 'Qtd_faixas_na_playlist'
+        FROM gravadora g 
+        join album a on g.cod_gra =a.gravadora 
+        join faixa f on a.cod_album = f.cod_album 
+        join playlists p on p.cod_album = f.cod_album AND p.num_disco = f.num_disco AND p.num_faixa = f.num_faixa
+        join compositores co on co.cod_album = f.cod_album AND co.num_disco = f.num_disco AND co.num_faixa = f.num_faixa
+        join compositor c on co.cod_comp = c.cod_comp
+        WHERE c.nome = 'Antonin Dvorak'
+        group by g.cod_gra
+        ) q join gravadora g on q.cod_gra = g.cod_gra
+
+    WHERE q.Qtd_faixas_na_playlist >= ALL (
+                                    SELECT count(*) as 'Qtd_faixas_na_playlist'
+                                    FROM gravadora g2 
+                                    join album a2 on g2.cod_gra =a2.gravadora 
+                                    join faixa f2 on a2.cod_album = f2.cod_album 
+                                    join playlists p2 on p2.cod_album = f2.cod_album AND p2.num_disco = f2.num_disco AND p2.num_faixa = f2.num_faixa
+                                    join compositores co2 on co2.cod_album = f2.cod_album AND co2.num_disco = f2.num_disco AND co2.num_faixa = f2.num_faixa
+                                    join compositor c2 on co2.cod_comp = c2.cod_comp
+                                    WHERE c2.nome = 'Antonin Dvorak'
+                                    group by g2.cod_gra
+                                    )
+    """
+
+    btn_realizarconsulta2 = ctk.CTkButton(
+        frame_dados2,
+        text="Realizar consulta",
+        command=lambda: realizarconsulta2(resultado2, listbox2)
+    )
+    btn_realizarconsulta2.grid(row=1, column=3, padx=10, pady=10, sticky="nsew")
+
+    ####################################
+
+    frame_dados3 = ctk.CTkFrame(janela)
+    frame_dados3.pack(pady=10, fill="x", padx=20)
+    ctk.CTkLabel(frame_dados3, text="Compositor com mais faixas nas playlists").grid(row=0, column=0, padx=10, pady=5)
+
+    frame_dados3.columnconfigure(1, weight=1)
+
+    listbox3 = tk.Listbox(
+        frame_dados3,
+        selectmode=tk.MULTIPLE,
+        height=4,
+        bg="#1e1e1e",
+        fg="white"
+    )
+    listbox3.configure(width=60)
+    listbox3.grid(row=1, column=0, padx=10, pady=10)
+
+    resultado3 = """
+    SELECT c.nome as nome_compositor, COUNT(*) as total_faixas
+    FROM compositor c
+        JOIN compositores cf ON cf.cod_comp = c.cod_comp
+        JOIN playlists fp ON fp.num_faixa= cf.num_faixa
+        AND fp.cod_album = cf.cod_album
+        AND fp.num_disco = cf.num_disco
+    GROUP BY c.cod_comp, c.nome
+    HAVING COUNT(*) >= ALL (SELECT MAX(qtd_faixas)
+                            FROM (	SELECT COUNT(*) as qtd_faixas
+                                    FROM compositores cf2
+                                        JOIN playlists fp2 ON fp2.num_faixa = cf2.num_faixa
+                                        AND fp2.cod_album    = cf2.cod_album
+                                        AND fp2.num_disco = cf2.num_disco
+                                    GROUP BY cf2.cod_comp) s)
+
+    """
+
+    btn_realizarconsulta3 = ctk.CTkButton(
+        frame_dados3,
+        text="Realizar consulta",
+        command=lambda: realizarconsulta3(resultado3, listbox3)
+    )
+
+    btn_realizarconsulta3.grid(row=1, column=3, padx=10, pady=10, sticky="nsew")
+
+    ###############################
+
+    frame_dados4 = ctk.CTkFrame(janela)
+    frame_dados4.pack(pady=10, fill="x", padx=20)
+    frame_dados4.columnconfigure(1, weight=1)
+    ctk.CTkLabel(frame_dados4, text="Todas playlist que todas as faixas sao do periodo Barroco e tipo de composicao Concerto").grid(row=0, column=0, padx=10, pady=5)
+
+    listbox4 = tk.Listbox(
+        frame_dados4,
+        selectmode=tk.MULTIPLE,
+        height=4,
+        bg="#1e1e1e",
+        fg="white"
+    )
+
+    listbox4.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+    resultado4 = """
+    SELECT play.nome
+    FROM playlist play
+    WHERE NOT EXISTS(
+        SELECT *
+        FROM playlists p join playlist pl on pl.cod_play = p.cod_play join faixa f on f.cod_album = p.cod_album AND f.num_disco = p.num_disco AND f.num_faixa = p.num_faixa join tipo_comp tc on f.tipo_composicao = tc.cod_tipo
+            join compositores co on co.cod_album = f.cod_album AND co.num_disco = f.num_disco AND co.num_faixa = f.num_faixa join compositor c on co.cod_comp = c.cod_comp join periodo per on c.periodo = per.cod_per
+
+        WHERE play.cod_play = pl.cod_play AND (per.descricao <> 'Barroco' OR tc.descricao <> 'Concerto')
+    )
+    """
+
+    btn_realizarconsulta4 = ctk.CTkButton(
+        frame_dados4,
+        text="Realizar consulta",
+        command=lambda: realizarconsulta3(resultado4, listbox4)
+    )
+
+    btn_realizarconsulta4.grid(row=1, column=3, padx=10, pady=10, sticky="nsew")
+
+
+
+
+def abrir_janela_criar_playlist(app):
+    janela = ctk.CTkToplevel()
+    janela.transient(app)
+    janela.grab_set()
+    janela.focus_force()
     janela.title("Criar Playlist")
-    janela.geometry("800x600")
+    largura, altura = 800, 600
+    centralizar_janela(janela, largura, altura)
     janela.resizable(False, False)
 
     # =========================
@@ -101,6 +335,7 @@ def abrir_janela_criar_playlist():
     def salvar_playlist():
         nome = entry_nome.get()
         if not nome:
+            mb.showerror("Erro", "Dê um nome a sua playlist.")
             return
 
         cod_play = entry_cod.get()
@@ -110,17 +345,22 @@ def abrir_janela_criar_playlist():
 
         data = date.today()
 
-        com_sql.criarPlaylist(cod_play, nome, data, 200)
+        criou = com_sql.criarPlaylist(cod_play, nome, data)
 
-        selecionadas = listbox.curselection()
-        for i in selecionadas:
-            cod_album, num_disco, num_faixa, _ = musicas[i]
-            com_sql.adicionarFaixasPlaylist(
-                num_faixa, cod_album, num_disco, cod_play
-            )
+        if criou:
+            selecionadas = listbox.curselection()
+            for i in selecionadas:
+                cod_album, num_disco, num_faixa, _ = musicas[i]
+                com_sql.adicionarFaixasPlaylist(
+                    num_faixa, cod_album, num_disco, cod_play
+                )
 
-        carregar_playlists()
-        janela.destroy()
+            carregar_playlists()
+            mb.showinfo("Sucesso", "Playlist criada com sucesso")
+            janela.destroy()
+        else:
+            mb.showerror("Erro", "Erro na criacao da playlist!")
+            return
 
     btn_salvar = ctk.CTkButton(
         janela,
@@ -129,10 +369,14 @@ def abrir_janela_criar_playlist():
     )
     btn_salvar.pack(pady=10)
 
-def abrir_janela_editar_playlist():
+def abrir_janela_editar_playlist(app):
     janela = ctk.CTkToplevel()
+    janela.transient(app)
+    janela.grab_set()
+    janela.focus_force()
     janela.title("Editar Playlist")
-    janela.geometry("900x600")
+    largura, altura = 900, 600
+    centralizar_janela(janela, largura, altura)
     janela.resizable(False, False)
 
     playlist_selecionada = {"cod": None}
@@ -244,6 +488,7 @@ def abrir_janela_editar_playlist():
             musica[2], musica[0], musica[1], cod_play
         )
 
+        carregar_playlists()
         carregar_musicas_playlist(None)
 
     def adicionar_musica():
@@ -260,13 +505,14 @@ def abrir_janela_editar_playlist():
             m[0] == musica[0] and m[1] == musica[1] and m[2] == musica[2]
             for m in existentes
         ):
-            messagebox.showwarning("Aviso", "Essa música já está na playlist")
+            mb.showwarning("Aviso", "Essa música já está na playlist")
             return
 
         com_sql.adicionarFaixasPlaylist(
             musica[2], musica[0], musica[1], cod_play
         )
 
+        carregar_playlists()
         carregar_musicas_playlist(None)
 
     # ================= BINDS =================
@@ -282,12 +528,13 @@ def iniciar_app():
 
     app = ctk.CTk()
     app.title("SpotPer")
-    app.geometry("900x600")
+    largura, altura = 900, 600
+    centralizar_janela(app, largura, altura)
     app.resizable(False, False)
 
     imagem_logo = ctk.CTkImage(
-        light_image=Image.open("logo-sFundo.png"),
-        dark_image=Image.open("logo-sFundo.png"),
+        light_image=Image.open("imgs/logo-sFundo.png"),
+        dark_image=Image.open("imgs/logo-sFundo.png"),
         size=(150, 150)
     )
 
@@ -310,7 +557,7 @@ def iniciar_app():
     ctk.CTkButton(
         frame_botoes,
         text="Criar Playlist",
-        command=abrir_janela_criar_playlist
+        command=lambda: abrir_janela_criar_playlist(app)
     ).grid(row=0, column=0, padx=10)
 
     ctk.CTkButton(
@@ -328,9 +575,14 @@ def iniciar_app():
     ctk.CTkButton(
         frame_botoes,
         text="Editar Playlist",
-        command=abrir_janela_editar_playlist
+        command=lambda: abrir_janela_editar_playlist(app)
     ).grid(row=0, column=3, padx=10)
 
+    ctk.CTkButton(
+        frame_botoes,
+        text ='Consultas',
+        command=lambda: abrir_janela_consultas(app)
+    ).grid(row=0, column=4, padx=10)
 
     lista_playlists = ctk.CTkTextbox(app, width=800, height=250)
     lista_playlists.pack(pady=20)

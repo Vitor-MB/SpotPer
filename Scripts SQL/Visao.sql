@@ -1,4 +1,4 @@
-CREATE VIEW dbo.AlbunsPlaylist
+CREATE VIEW [dbo].[AlbunsPlaylist]
 WITH SCHEMABINDING
 AS
     SELECT 
@@ -17,4 +17,15 @@ GO
 
 CREATE UNIQUE CLUSTERED INDEX I_AlbunsPlaylist
 ON dbo.AlbunsPlaylist(cod_play, cod_album);
+GO
+
+CREATE VIEW [dbo].[vw_playlist_album_count]
+WITH SCHEMABINDING
+AS
+SELECT 
+    p.cod_play,
+    p.nome_playlist AS nome_playlist,
+    COUNT(*) AS qtd_albuns
+FROM dbo.AlbunsPlaylist as p
+GROUP BY p.cod_play, p.nome_playlist;
 GO
